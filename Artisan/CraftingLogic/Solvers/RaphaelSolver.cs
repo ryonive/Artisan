@@ -17,7 +17,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,120 +45,116 @@ namespace Artisan.CraftingLogic.Solvers
 
     internal static class RaphaelCache
     {
-        internal static readonly ConcurrentDictionary<string, Tuple<CancellationTokenSource, Task>> Tasks = [];
+        internal static readonly ConcurrentDictionary<string, RaphaelTaskInfo> Tasks = [];
         [NonSerialized]
         public static Dictionary<string, RaphaelSolutionConfig> TempConfigs = new();
 
-        public static void Build(CraftState craft, RaphaelSolutionConfig config)
+        internal sealed class RaphaelTaskInfo
         {
-            if (craft.StatLevel <= 7)
-                return;
+            public CancellationTokenSource Cancellation { get; set; }
+            public Task Task { get; set; }
+            public volatile bool FromStartCraft;
+            public volatile bool Succeeded;
+
+            public RaphaelTaskInfo(CancellationTokenSource cts, Task task, bool fromStartCraft)
+            {
+                Cancellation = cts;
+                Task = task;
+                FromStartCraft = fromStartCraft;
+            }
+        }
+
+
+        public static void Build(CraftState craft, RaphaelSolutionConfig config, bool fromStartCraft = false)
+        {
+            if (craft.StatLevel <= 7) return;
 
             var key = GetKey(craft);
+            if (!CLIExists() || Tasks.ContainsKey(key)) return;
 
-            if (CLIExists() && !Tasks.ContainsKey(key))
+            P.Config.RaphaelSolverCacheV5.TryRemove(key, out _);
+
+            var manipulation = craft.UnlockedManipulation ? "--manipulation" : "";
+            var itemText = $"--custom-recipe {craft.LevelTable.RowId} {craft.CraftProgress} {(craft.CraftCollectible ? craft.CraftQualityMin3 : craft.CraftQualityMax)} {craft.CraftDurability} {(craft.CraftExpert ? "1" : "0")} --stellar-steady-hand {Math.Min(craft.CurrentSteadyHandCharges, P.Config.RaphaelSolverConfig.MaxStellarHand)}";
+
+            var argsList = new List<string>
             {
-                P.Config.RaphaelSolverCacheV5.TryRemove(key, out _);
+                $"--initial {craft.InitialQuality}"
+            };
 
-                Svc.Log.Information("Spawning Raphael process");
+            if (config.EnsureReliability) argsList.Add("--adversarial");
+            if (config.BackloadProgress) argsList.Add("--backload-progress");
+            if (config.HeartAndSoul) argsList.Add("--heart-and-soul");
+            if (config.QuickInno) argsList.Add("--quick-innovation");
+            if (P.Config.RaphaelSolverConfig.MaximumThreads > 0)
+                argsList.Add($"--threads {P.Config.RaphaelSolverConfig.MaximumThreads}");
 
-                var manipulation = craft.UnlockedManipulation ? "--manipulation" : "";
-                var itemText = $"--custom-recipe {craft.LevelTable.RowId} {craft.CraftProgress} {(craft.CraftCollectible ? craft.CraftQualityMin3 : craft.CraftQualityMax)} {craft.CraftDurability} {(craft.CraftExpert ? "1" : "0")} --stellar-steady-hand {Math.Min(craft.CurrentSteadyHandCharges, P.Config.RaphaelSolverConfig.MaxStellarHand)}";
-                var extraArgsBuilder = new StringBuilder();
+            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(P.Config.RaphaelSolverConfig.TimeOutMins));
+            var info = new RaphaelTaskInfo(cts, null!, fromStartCraft);
 
-                extraArgsBuilder.Append($"--initial {craft.InitialQuality} "); // must always have a space after
-
-                if (config.EnsureReliability)
+            info.Task = Task.Run(async () =>
+            {
+                try
                 {
-                    Svc.Log.Warning("Ensuring reliability is enabled, this may take a while. NO SUPPORT GIVEN IF ENABLED.");
-                    extraArgsBuilder.Append($"--adversarial "); // must always have a space after
-                }
-
-                if (config.BackloadProgress)
-                {
-                    extraArgsBuilder.Append($"--backload-progress "); // must always have a space after
-                }
-
-                if (config.HeartAndSoul)
-                {
-                    extraArgsBuilder.Append($"--heart-and-soul "); // must always have a space after
-                }
-
-                if (config.QuickInno)
-                {
-                    extraArgsBuilder.Append($"--quick-innovation "); // must always have a space after
-                }
-
-                if (P.Config.RaphaelSolverConfig.MaximumThreads > 0)
-                {
-                    extraArgsBuilder.Append($"--threads {P.Config.RaphaelSolverConfig.MaximumThreads} "); // must always have a space after
-                }
-
-                var process = new Process()
-                {
-                    StartInfo = new ProcessStartInfo
+                    using var process = new Process
                     {
-                        FileName = Path.Join(Path.GetDirectoryName(Svc.PluginInterface.AssemblyLocation.FullName), "raphael-cli.bin"),
-                        Arguments = $"solve {itemText} {manipulation} --level {craft.StatLevel} --stats {craft.StatCraftsmanship} {craft.StatControl} {craft.StatCP} {extraArgsBuilder} --output-variables action_ids", // Command to execute
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
-                };
-
-                Svc.Log.Information(process.StartInfo.Arguments);
-
-                var cts = new CancellationTokenSource();
-                cts.Token.Register(() =>
-                {
-                    try
-                    {
-                        process?.Kill();
-                    }
-                    catch (Exception ex)
-                    {
-                        ex.Log("Couldn't remove process, likely already completed.");
-                    }
-                    finally
-                    {
-                        Tasks.TryRemove(key, out var t);
-                        if (Crafting.CurState is Crafting.State.WaitStart)
+                        StartInfo = new ProcessStartInfo
                         {
-                            DuoLog.Error("Raphael has timed out or cancelled before a solution could be generated. Crafting will not start, please restart this craft.");
-                            Crafting.CurState = Crafting.State.InvalidState;
-                        }
-                    }
-                }
-                );
+                            FileName = Path.Join(Path.GetDirectoryName(Svc.PluginInterface.AssemblyLocation.FullName), "raphael-cli.bin"),
+                            Arguments = $"solve {itemText} {manipulation} --level {craft.StatLevel} --stats {craft.StatCraftsmanship} {craft.StatControl} {craft.StatCP} {string.Join(' ', argsList)} --output-variables action_ids",
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        },
+                        EnableRaisingEvents = true
+                    };
 
-                cts.CancelAfter(TimeSpan.FromMinutes(P.Config.RaphaelSolverConfig.TimeOutMins));
+                    process.Start();
 
-                var task = Task.Run(() =>
-                {
-                    try
+                    using (cts.Token.Register(() =>
                     {
-                        process.Start();
-                        var output = process.StandardOutput.ReadToEnd();
-                        var error = process.StandardError.ReadToEnd().Trim();
+                        try { if (!process.HasExited) process.Kill(); }
+                        catch (Exception ex) { ex.Log(); }
+                        finally
+                        {
+                            if (Tasks.TryRemove(key, out var t) && t.FromStartCraft && Crafting.CurState is Crafting.State.WaitStart)
+                            {
+                                DuoLog.Error("Raphael has timed out or cancelled before a solution could be generated. Crafting will not start, please restart this craft.");
+                                Crafting.CurState = Crafting.State.InvalidState;
+                            }
+                        }
+                    }))
+                    {
+                        var stdOutTask = process.StandardOutput.ReadToEndAsync(cts.Token);
+                        var stdErrTask = process.StandardError.ReadToEndAsync(cts.Token);
+
+                        await Task.WhenAll(
+                            stdOutTask,
+                            stdErrTask,
+                            process.WaitForExitAsync(cts.Token)
+                        ).ConfigureAwait(false);
+
+                        var output = stdOutTask.Result;
+                        var error = stdErrTask.Result.Trim();
+
                         if (process.ExitCode != 0)
                         {
-                            DuoLog.Error(error.Split('\r', '\n')[1]);
+                            if (!string.IsNullOrWhiteSpace(error))
+                                DuoLog.Error(error.Split('\r', '\n')[0]);
+
+                            info.Succeeded = false;
                             cts.Cancel();
                             return;
                         }
-                        cts.Token.ThrowIfCancellationRequested();
 
-                        Svc.Log.Information("Raphael process completed, output generated");
-                        var rng = new Random();
-                        var ID = rng.Next(50001, 10000000);
-                        while (P.Config.RaphaelSolverCacheV5.Any(kv => kv.Value.ID == ID))
-                            ID = rng.Next(50001, 10000000);
+                        var cleansedOutput = output.Replace("[", "").Replace("]", "").Replace("\"", "")
+                                                   .Split(", ")
+                                                   .Select(x => int.TryParse(x, out int n) ? n : 0);
 
-                        var cleansedOutput = output.Replace("[", "").Replace("]", "").Replace("\"", "").Split(", ").Select(x => int.TryParse(x, out int n) ? n : 0);
-                        P.Config.RaphaelSolverCacheV5[key] = new MacroSolverSettings.Macro()
+                        P.Config.RaphaelSolverCacheV5[key] = new MacroSolverSettings.Macro
                         {
-                            ID = ID,
+                            ID = new Random().Next(50001, 10000000),
                             Name = key,
                             Steps = MacroUI.ParseMacro(cleansedOutput),
                             Options = new()
@@ -173,94 +168,27 @@ namespace Artisan.CraftingLogic.Solvers
                             }
                         };
 
-                        Svc.Log.Information("Raphael macro generated and stored in cache.");
-                        if (P.Config.RaphaelSolverCacheV5[key] == null || P.Config.RaphaelSolverCacheV5[key].Steps.Count == 0)
-                        {
-                            Svc.Log.Error($"Raphael failed to generate a valid macro. This could be one of the following reasons:" +
-                                $"\n- If you are not running Windows, Raphael may not be compatible with your OS." +
-                                $"\n- You cancelled the generation." +
-                                $"\n- Raphael just gave up after not finding a result.{(P.Config.RaphaelSolverConfig.AutoGenerate ? "\nAutomatic generation will be disabled as a result." : "")}");
-                            P.Config.RaphaelSolverConfig.AutoGenerate = false;
-                            cts.Cancel();
-                            return;
-                        }
-
-                        static bool autoSwitchOk(uint recipeId)
-                        {
-                            if (P.Config.RaphaelSolverConfig.AutoSwitchOverManual)
-                                return true;
-
-                            if (P.Config.RecipeConfigs.TryGetValue(recipeId, out var cfg))
-                                // flavours: 0 = standard, expert; 3 = raphael; otherwise = macro/script
-                                return cfg.SolverFlavour is 0 or 3;
-
-                            return true;
-                        }
-
-                        if (P.Config.RaphaelSolverConfig.AutoSwitch)
-                        {
-                            Svc.Log.Information("Auto-switch is enabled, switching solver for recipe if applicable.");
-                            if (!P.Config.RaphaelSolverConfig.AutoSwitchOnAll)
-                            {
-                                Svc.Log.Debug("Switching to Raphael solver - Single");
-                                var nopt = CraftingProcessor.GetAvailableSolversForRecipe(craft, true).FirstOrNull(x => x.Name == $"Raphael Recipe Solver");
-                                if (nopt is { } opt)
-                                {
-                                    if (autoSwitchOk(craft.Recipe.RowId))
-                                    {
-                                        Svc.Log.Information("AutoSwitchOk, setting");
-                                        var config = P.Config.RecipeConfigs.GetValueOrDefault(craft.Recipe.RowId) ?? new();
-                                        config.SolverType = opt.Def.GetType().FullName!;
-                                        config.SolverFlavour = opt.Flavour;
-                                        P.Config.RecipeConfigs[craft.Recipe.RowId] = config;
-                                    }
-                                    else
-                                        Svc.Log.Information("Never mind, recipe already has a macro assigned");
-                                }
-                            }
-                            else
-                            {
-                                var crafts = AllValidCrafts(key).ToList();
-                                Svc.Log.Information($"Applying solver to {crafts.Count} recipes.");
-                                var nopt = CraftingProcessor.GetAvailableSolversForRecipe(craft, true).FirstOrNull(x => x.Name == $"Raphael Recipe Solver");
-                                if (nopt is { } opt)
-                                {
-                                    var config = P.Config.RecipeConfigs.GetValueOrDefault(craft.Recipe.RowId) ?? new();
-                                    config.SolverType = opt.Def.GetType().FullName!;
-                                    config.SolverFlavour = opt.Flavour;
-                                    foreach (var c in crafts)
-                                    {
-                                        if (autoSwitchOk(c.Recipe.RowId))
-                                        {
-                                            Svc.Log.Information($"Switching {c.Recipe.RowId} ({c.Recipe.ItemResult.Value.Name}) to Raphael solver");
-                                            var switchConfig = P.Config.RecipeConfigs.GetValueOrDefault(c.Recipe.RowId) ?? new();
-                                            switchConfig.SolverType = opt.Def.GetType().FullName!;
-                                            switchConfig.SolverFlavour = opt.Flavour;
-                                            P.Config.RecipeConfigs[c.Recipe.RowId] = switchConfig;
-                                        }
-                                        else
-                                            Svc.Log.Information($"Skipping {c.Recipe.RowId} ({c.Recipe.ItemResult.Value.Name}) because it already has a macro assigned");
-                                    }
-                                }
-                            }
-                        }
-                        Svc.Log.Information("Saving config changes after Raphael generation.");
-                        P.Config.Save();
+                        info.Succeeded = P.Config.RaphaelSolverCacheV5[key]?.Steps.Count > 0;
                     }
-                    catch (Exception ex)
-                    {
-                        ex.Log("Something went wrong with Raphael task.");
-                    }
-                    finally
-                    {
-                        Svc.Log.Information("Tidying up task.");
-                        Tasks.TryRemove(key, out var _);
-                    }
-                }, cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    info.Succeeded = false;
+                }
+                catch (Exception ex)
+                {
+                    ex.Log("Something went wrong with Raphael task.");
+                    info.Succeeded = false;
+                }
+                finally
+                {
+                    Tasks.TryRemove(key, out _);
+                }
+            }, cts.Token);
 
-                Tasks.TryAdd(key, new(cts, task));
-            }
+            Tasks.TryAdd(key, info);
         }
+
 
         public static string GetKey(CraftState craft)
         {
@@ -421,7 +349,7 @@ namespace Artisan.CraftingLogic.Solvers
                         if (ImGui.Button("Cancel Raphael Generation", new Vector2(ImGui.GetContentRegionAvail().X, 25f.Scale())))
                         {
                             Tasks.TryRemove(key, out var task);
-                            task.Item1.Cancel();
+                            task.Cancellation.Cancel();
                         }
                     }
                 }
