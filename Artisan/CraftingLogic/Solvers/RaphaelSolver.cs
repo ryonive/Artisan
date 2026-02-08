@@ -1,5 +1,6 @@
 ﻿using Artisan.GameInterop;
 using Artisan.RawInformation;
+using Artisan.RawInformation.Character;
 using Artisan.UI;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
@@ -26,18 +27,20 @@ namespace Artisan.CraftingLogic.Solvers
     {
         public Solver Create(CraftState craft, int flavour)
         {
+            if (craft.StatLevel <= 7)
+                return new StandardSolver();
+
             var key = RaphaelCache.GetKey(craft);
             if (RaphaelCache.HasSolution(craft, out var output))
             {
                 return new MacroSolver(output!, craft);
             }
-            return craft.CraftExpert ? new ExpertSolver() : new StandardSolver(false);
+            return craft.CraftExpert ? new ExpertSolver() : new StandardSolver();
         }
 
         public IEnumerable<ISolverDefinition.Desc> Flavours(CraftState craft)
         {
-            //if (RaphaelCache.HasSolution(craft, out var solution))
-            yield return new(this, 3, 0, $"Raphael Recipe Solver");
+            yield return new(this, 3, 0, $"Raphael Recipe Solver", craft.StatLevel <= 7 ? $"Does not work before unlocking {Skills.MastersMend.NameOfAction()}. Please use Standard Recipe Solver" : "");
         }
     }
 
@@ -49,6 +52,9 @@ namespace Artisan.CraftingLogic.Solvers
 
         public static void Build(CraftState craft, RaphaelSolutionConfig config)
         {
+            if (craft.StatLevel <= 7)
+                return;
+
             var key = GetKey(craft);
 
             if (CLIExists() && !Tasks.ContainsKey(key))
@@ -283,6 +289,8 @@ namespace Artisan.CraftingLogic.Solvers
             foreach (var recipe in recipes)
             {
                 var state = Crafting.BuildCraftStateForRecipe(default, (Job)((uint)Job.CRP + recipe.CraftType.RowId), recipe);
+                if (state.StatLevel <= 7) continue;
+
                 if (stats.Prog == state.CraftProgress &&
                     stats.Qual == state.CraftQualityMax &&
                     stats.Dur == state.CraftDurability)
@@ -399,19 +407,22 @@ namespace Artisan.CraftingLogic.Solvers
                 if (inProgress)
                     ImGui.EndDisabled();
 
-                if (!inProgress)
+                if (craft.StatLevel > 7)
                 {
-                    if (ImGui.Button("Build Raphael Solution", new Vector2(ImGui.GetContentRegionAvail().X, 25f.Scale())))
+                    if (!inProgress)
                     {
-                        Build(craft, TempConfigs[key]);
+                        if (ImGui.Button("Build Raphael Solution", new Vector2(ImGui.GetContentRegionAvail().X, 25f.Scale())))
+                        {
+                            Build(craft, TempConfigs[key]);
+                        }
                     }
-                }
-                else
-                {
-                    if (ImGui.Button("Cancel Raphael Generation", new Vector2(ImGui.GetContentRegionAvail().X, 25f.Scale())))
+                    else
                     {
-                        Tasks.TryRemove(key, out var task);
-                        task.Item1.Cancel();
+                        if (ImGui.Button("Cancel Raphael Generation", new Vector2(ImGui.GetContentRegionAvail().X, 25f.Scale())))
+                        {
+                            Tasks.TryRemove(key, out var task);
+                            task.Item1.Cancel();
+                        }
                     }
                 }
 
