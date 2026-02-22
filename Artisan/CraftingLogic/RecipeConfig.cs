@@ -6,13 +6,13 @@ using Artisan.RawInformation.Character;
 using Artisan.UI;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
-using Dalamud.Interface.Style;
 using ECommons.DalamudServices;
 using ECommons.ExcelServices;
 using ECommons.ImGuiMethods;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using Lumina.Excel.Sheets;
 using System;
+using System.Diagnostics.Tracing;
 using System.Linq;
 
 namespace Artisan.CraftingLogic;
@@ -30,6 +30,19 @@ public class RecipeConfig
 
     public string CurrentSolverType => TempSolverType != "" ? TempSolverType : SolverType;
     public int CurrentSolverFlavour => TempSolverFlavour != -1 ? TempSolverFlavour : SolverFlavour;
+
+    public string CurrentSolverName
+    {
+        get
+        {
+            foreach (var def in CraftingProcessor.GetSolverDefinitions())
+            {
+                if (def.Def.GetType().FullName == CurrentSolverType && def.Flavour == CurrentSolverFlavour)
+                    return def.Name;
+            }
+            return "";
+        }
+    }
 
     public string SolverType = ""; // TODO: ideally it should be a Type?, but that causes problems for serialization
     public int SolverFlavour;
@@ -60,8 +73,11 @@ public class RecipeConfig
     public string ManualName => requiredManual == Default ? $"{P.Config.DefaultConsumables.ManualName} (Default)" : RequiredManual == Disabled ? "Disabled" : $"{ConsumableChecker.Manuals.FirstOrDefault(x => x.Id == RequiredManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
     public string SquadronManualName => requiredSquadronManual == Default ? $"{P.Config.DefaultConsumables.SquadronManualName} (Default)" : RequiredSquadronManual == Disabled ? "Disabled" : $"{ConsumableChecker.SquadronManuals.FirstOrDefault(x => x.Id == RequiredSquadronManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
 
-    [NonSerialized]
-    private float _largestName;
+    public float LargestName => (Math.Max(Math.Max(Math.Max(Math.Max(ImGui.CalcTextSize(FoodName).X, ImGui.CalcTextSize(PotionName).X), ImGui.CalcTextSize(ManualName).X), ImGui.CalcTextSize(SquadronManualName).X), ImGui.CalcTextSize(CurrentSolverName).X) + 32f);
+
+    public bool SolverIsRaph => CurrentSolverType == typeof(RaphaelSolverDefintion).FullName!;
+    public bool SolverIsStandard => CurrentSolverType == typeof(StandardSolverDefinition).FullName!;
+    public bool SolverIsExpert => CurrentSolverType == typeof(ExpertSolverDefinition).FullName!;
 
     public bool Draw(uint recipeId)
     {
@@ -74,7 +90,6 @@ public class RecipeConfig
         if (craft.InitialQuality == 0)
             craft.InitialQuality = Simulator.GetStartingQuality(recipe, false, craft.StatLevel);
         bool changed = false;
-        _largestName = Math.Max(Math.Max(Math.Max(ImGui.CalcTextSize(FoodName).X.Scale(), ImGui.CalcTextSize(PotionName).X.Scale()), ImGui.CalcTextSize(ManualName).X.Scale()), ImGui.CalcTextSize(SquadronManualName).X.Scale()) + 32f.Scale();
         changed |= DrawFood();
         changed |= DrawPotion();
         changed |= DrawManual();
@@ -90,7 +105,7 @@ public class RecipeConfig
         ImGuiEx.TextV("Food Usage:");
         ImGui.SameLine(130f.Scale());
         if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
-        else ImGui.PushItemWidth(_largestName);
+        else ImGui.PushItemWidth(LargestName);
         if (ImGui.BeginCombo("##foodBuff", FoodName))
         {
             if (this != P.Config.DefaultConsumables)
@@ -137,7 +152,7 @@ public class RecipeConfig
         ImGuiEx.TextV("Medicine Usage:");
         ImGui.SameLine(130f.Scale());
         if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
-        else ImGui.PushItemWidth(_largestName);
+        else ImGui.PushItemWidth(LargestName);
         if (ImGui.BeginCombo("##potBuff", PotionName))
         {
             if (this != P.Config.DefaultConsumables)
@@ -184,7 +199,7 @@ public class RecipeConfig
         ImGuiEx.TextV("Manual Usage:");
         ImGui.SameLine(130f.Scale());
         if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
-        else ImGui.PushItemWidth(_largestName);
+        else ImGui.PushItemWidth(LargestName);
         if (ImGui.BeginCombo("##manualBuff", ManualName))
         {
             if (this != P.Config.DefaultConsumables)
@@ -221,7 +236,7 @@ public class RecipeConfig
         ImGuiEx.TextV("Squadron Manual:");
         ImGui.SameLine(130f.Scale());
         if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
-        else ImGui.PushItemWidth(_largestName);
+        else ImGui.PushItemWidth(LargestName);
         if (ImGui.BeginCombo("##squadronManualBuff", SquadronManualName))
         {
             if (this != P.Config.DefaultConsumables)
@@ -307,6 +322,7 @@ public class RecipeConfig
 
     public unsafe void DrawSimulator(CraftState craft)
     {
+
         if (!P.Config.HideRecipeWindowSimulator)
         {
             var recipe = craft.Recipe;
@@ -317,15 +333,15 @@ public class RecipeConfig
             if (solver.Name != "Expert Recipe Solver")
             {
                 if (craft.MissionHasMaterialMiracle && solver.Name == "Standard Recipe Solver" && P.Config.UseMaterialMiracle)
-                    ImGuiEx.TextWrapped($"This would use Material Miracle, which is not compatible with the simulator.");
+                    ImGuiEx.TextCentered($"This would use Material Miracle, which is not compatible with the simulator.");
                 else
                     if (solver.Name == "Raphael Recipe Solver" && !RaphaelCache.HasSolution(craft, out _))
-                        ImGuiEx.TextWrapped($"Unable to generate a simulator without a Raphael solution generated.");
+                        ImGuiEx.TextCentered($"Unable to generate a simulator without a Raphael solution generated.");
                     else
-                        ImGuiEx.TextWrapped(hintColor, solverHint);
+                        ImGuiEx.TextCentered(hintColor, solverHint);
             }
             else
-                ImGuiEx.TextWrapped($"Please run this recipe in the simulator for results.");
+                ImGuiEx.TextCentered($"Please run this recipe in the simulator for results.");
 
             if (ImGui.IsItemClicked())
             {

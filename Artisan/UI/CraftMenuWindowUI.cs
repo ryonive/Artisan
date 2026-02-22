@@ -68,7 +68,7 @@ namespace Artisan.UI
                 {
                     return;
                 }
-
+                var config = P.Config.RecipeConfigs.GetValueOrDefault(Endurance.RecipeID) ?? new();
                 var autoMode = P.Config.AutoMode;
 
                 if (ImGui.Checkbox("Automatic Action Execution Mode", ref autoMode))
@@ -96,11 +96,12 @@ namespace Artisan.UI
                     ImGuiEx.Text(ImGuiColors.DalamudYellow, $"Missing Ingredients:\r\n- {string.Join("\r\n- ", PreCrafting.MissingIngredients(recipe))}");
                 }
 
-                if (Crafting.MaterialMiracleCharges() > 0)
+                if (Crafting.MaterialMiracleCharges() > 0 && (config.SolverIsStandard || config.SolverIsExpert))
                 {
                     bool useMatMiracle = LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert ? P.Config.ExpertSolverConfig.UseMaterialMiracle : P.Config.UseMaterialMiracle;
                     int delayMatMiracle = LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert ? P.Config.ExpertSolverConfig.MinimumStepsBeforeMiracle : P.Config.MinimumStepsBeforeMiracle;
                     bool multiMatMiracle = P.Config.MaterialMiracleMulti;
+                    
                     if (ImGui.Checkbox("Use Material Miracle", ref useMatMiracle))
                     {
                         if (LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert)
@@ -108,18 +109,22 @@ namespace Artisan.UI
                         else
                             P.Config.UseMaterialMiracle = useMatMiracle;
                     }
-                    if (ImGui.SliderInt("Minimum steps to execute before trying Material Miracle", ref delayMatMiracle, 0, 20))
+                    if (useMatMiracle)
                     {
-                        if (LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert)
-                            P.Config.ExpertSolverConfig.MinimumStepsBeforeMiracle = delayMatMiracle;
-                        else
-                            P.Config.MinimumStepsBeforeMiracle = delayMatMiracle;
-                    }
+                        ImGui.Text("Minimum Steps Before Using Material Miracle");
+                        if (ImGui.SliderInt("###MaterialMiracleSlider", ref delayMatMiracle, 0, 20))
+                        {
+                            if (LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert)
+                                P.Config.ExpertSolverConfig.MinimumStepsBeforeMiracle = delayMatMiracle;
+                            else
+                                P.Config.MinimumStepsBeforeMiracle = delayMatMiracle;
+                        }
 
-                    if (false == LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert)
-                    {
-                        if (ImGui.Checkbox("Use multiple material miracles", ref multiMatMiracle))
-                            P.Config.MaterialMiracleMulti = multiMatMiracle;
+                        if (false == LuminaSheets.RecipeSheet[Endurance.RecipeID].IsExpert)
+                        {
+                            if (ImGui.Checkbox("Use Multiple Material Miracles", ref multiMatMiracle))
+                                P.Config.MaterialMiracleMulti = multiMatMiracle;
+                        }
                     }
                 }
 
@@ -136,8 +141,6 @@ namespace Artisan.UI
                     {
                         return;
                     }
-
-                    var config = P.Config.RecipeConfigs.GetValueOrDefault(Endurance.RecipeID) ?? new();
 
                     if (!config.Draw(Endurance.RecipeID))
                     {
