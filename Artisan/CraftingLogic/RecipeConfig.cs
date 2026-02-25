@@ -81,28 +81,10 @@ public class RecipeConfig
     public bool RequiredPotionHQ => TempRequiredPotion != 0 ? TempPotionHQ : (requiredPotion == Default ? P.Config.DefaultConsumables.requiredPotionHQ : requiredPotionHQ);
 
 
-    public string FoodName => TempRequiredFood != 0
-        ? $"{(TempFoodHQ ? " " : "")}{ConsumableChecker.Food.FirstOrDefault(x => x.Id == TempRequiredFood).Name} (Qty: {ConsumableChecker.NumberOfConsumable(TempRequiredFood, TempFoodHQ)})"
-        : requiredFood == Default ? $"{P.Config.DefaultConsumables.FoodName} (Default)"
-        : RequiredFood == Disabled ? "Disabled"
-        : $"{(RequiredFoodHQ ? " " : "")}{ConsumableChecker.Food.FirstOrDefault(x => x.Id == RequiredFood).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredFood, RequiredFoodHQ)})";
-    public string PotionName => TempRequiredPotion != 0
-        ? $"{(TempPotionHQ ? " " : "")}{ConsumableChecker.Pots.FirstOrDefault(x => x.Id == TempRequiredPotion).Name} (Qty: {ConsumableChecker.NumberOfConsumable(TempRequiredPotion, TempPotionHQ)})"
-        : requiredPotion == Default ? $"{P.Config.DefaultConsumables.PotionName} (Default)"
-        : RequiredPotion == Disabled ? "Disabled"
-        : $"{(RequiredPotionHQ ? " " : "")}{ConsumableChecker.Pots.FirstOrDefault(x => x.Id == RequiredPotion).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredPotion, RequiredPotionHQ)})";
-
-    public string ManualName => TempRequiredManual != 0
-        ? $"{ConsumableChecker.Manuals.FirstOrDefault(x => x.Id == TempRequiredManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(TempRequiredManual, false)})"
-        : requiredManual == Default ? $"{P.Config.DefaultConsumables.ManualName} (Default)"
-        : RequiredManual == Disabled ? "Disabled"
-        : $"{ConsumableChecker.Manuals.FirstOrDefault(x => x.Id == RequiredManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
-
-    public string SquadronManualName => TempRequiredSquadronManual != 0
-        ? $"{ConsumableChecker.SquadronManuals.FirstOrDefault(x => x.Id == TempRequiredSquadronManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(TempRequiredSquadronManual, false)})"
-        : requiredSquadronManual == Default ? $"{P.Config.DefaultConsumables.SquadronManualName} (Default)"
-        : RequiredSquadronManual == Disabled ? "Disabled"
-        : $"{ConsumableChecker.SquadronManuals.FirstOrDefault(x => x.Id == RequiredSquadronManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredSquadronManual, false)})";
+    public string FoodName => requiredFood == Default && TempRequiredFood == 0 ? $"{P.Config.DefaultConsumables.FoodName} (Default)" : RequiredFood == Disabled ? "Disabled" : $"{(RequiredFoodHQ ? " " : "")}{ConsumableChecker.Food.FirstOrDefault(x => x.Id == RequiredFood).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredFood, RequiredFoodHQ)})";
+    public string PotionName => requiredPotion == Default && TempRequiredPotion == 0 ? $"{P.Config.DefaultConsumables.PotionName} (Default)" : RequiredPotion == Disabled ? "Disabled" : $"{(RequiredPotionHQ ? " " : "")}{ConsumableChecker.Pots.FirstOrDefault(x => x.Id == RequiredPotion).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredPotion, RequiredPotionHQ)})";
+    public string ManualName => requiredManual == Default && TempRequiredManual == 0 ? $"{P.Config.DefaultConsumables.ManualName} (Default)" : RequiredManual == Disabled ? "Disabled" : $"{ConsumableChecker.Manuals.FirstOrDefault(x => x.Id == RequiredManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
+    public string SquadronManualName => requiredSquadronManual == Default && TempRequiredSquadronManual == 0 ? $"{P.Config.DefaultConsumables.SquadronManualName} (Default)" : RequiredSquadronManual == Disabled  ? "Disabled" : $"{ConsumableChecker.SquadronManuals.FirstOrDefault(x => x.Id == RequiredSquadronManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredSquadronManual, false)})";
 
     public float LargestName => (Math.Max(Math.Max(Math.Max(Math.Max(ImGui.CalcTextSize(FoodName).X, ImGui.CalcTextSize(PotionName).X), ImGui.CalcTextSize(ManualName).X), ImGui.CalcTextSize(SquadronManualName).X), ImGui.CalcTextSize(CurrentSolverName).X) + 32f);
 
