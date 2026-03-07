@@ -26,7 +26,7 @@ namespace Artisan.CraftingLogic.Solvers
     {
         public Solver Create(CraftState craft, int flavour)
         {
-            if (craft.StatLevel <= 7)
+            if (craft.StatLevel < 7)
                 return new StandardSolver();
 
             var key = RaphaelCache.GetKey(craft);
@@ -39,7 +39,11 @@ namespace Artisan.CraftingLogic.Solvers
 
         public IEnumerable<ISolverDefinition.Desc> Flavours(CraftState craft)
         {
+<<<<<<< Updated upstream
             yield return new(this, 3, 0, $"Raphael Recipe Solver", craft.StatLevel <= 7 ? $"Does not work before unlocking {Skills.MastersMend.NameOfAction()}. Please use Standard Recipe Solver" : "");
+=======
+            yield return new(this, 3, 1, $"Raphael Recipe Solver", craft.StatLevel < 7 ? $"Does not work before unlocking {Skills.MastersMend.NameOfAction()}. Please use Standard Recipe Solver" : "");
+>>>>>>> Stashed changes
         }
 
         public IEnumerable<ISolverDefinition.Desc> Flavours()
@@ -72,7 +76,7 @@ namespace Artisan.CraftingLogic.Solvers
 
         public static void Build(CraftState craft, RaphaelSolutionConfig config, bool fromStartCraft = false)
         {
-            if (craft.StatLevel <= 7) return;
+            if (craft.StatLevel < 7) return;
 
             var key = GetKey(craft);
             if (!CLIExists() || Tasks.ContainsKey(key)) return;
@@ -194,6 +198,11 @@ namespace Artisan.CraftingLogic.Solvers
                 finally
                 {
                     if (info.Succeeded)
+<<<<<<< Updated upstream
+=======
+                    {
+                        AutoSwitch(craft, key);
+>>>>>>> Stashed changes
                         P.Config.Save();
                     Tasks.TryRemove(key, out _);
                 }
@@ -202,6 +211,71 @@ namespace Artisan.CraftingLogic.Solvers
             Tasks.TryAdd(key, info);
         }
 
+<<<<<<< Updated upstream
+=======
+        private static void AutoSwitch(CraftState craft, string key)
+        {
+            static bool autoSwitchOk(uint recipeId)
+            {
+                if (P.Config.RaphaelSolverConfig.AutoSwitchOverManual)
+                    return true;
+
+                if (P.Config.RecipeConfigs.TryGetValue(recipeId, out var cfg))
+                    // flavours: 0 = standard, expert; 3 = raphael; otherwise = macro/script
+                    return cfg.SolverFlavour is 0 or 3;
+
+                return true;
+            }
+
+            if (P.Config.RaphaelSolverConfig.AutoSwitch)
+            {
+                Svc.Log.Information("Auto-switch is enabled, switching solver for recipe if applicable.");
+                if (!P.Config.RaphaelSolverConfig.AutoSwitchOnAll)
+                {
+                    Svc.Log.Debug("Switching to Raphael solver - Single");
+                    var nopt = CraftingProcessor.GetAvailableSolversForRecipe(craft, true).FirstOrNull(x => x.Name == $"Raphael Recipe Solver");
+                    if (nopt is { } opt)
+                    {
+                        if (autoSwitchOk(craft.Recipe.RowId))
+                        {
+                            Svc.Log.Information("AutoSwitchOk, setting");
+                            var config = P.Config.RecipeConfigs.GetValueOrDefault(craft.Recipe.RowId) ?? new();
+                            config.SolverType = opt.Def.GetType().FullName!;
+                            config.SolverFlavour = opt.Flavour;
+                            P.Config.RecipeConfigs[craft.Recipe.RowId] = config;
+                        }
+                        else
+                            Svc.Log.Information("Never mind, recipe already has a macro assigned");
+                    }
+                }
+                else
+                {
+                    var crafts = AllValidCrafts(key).ToList();
+                    Svc.Log.Information($"Applying solver to {crafts.Count} recipes.");
+                    var nopt = CraftingProcessor.GetAvailableSolversForRecipe(craft, true).FirstOrNull(x => x.Name == $"Raphael Recipe Solver");
+                    if (nopt is { } opt)
+                    {
+                        var config = P.Config.RecipeConfigs.GetValueOrDefault(craft.Recipe.RowId) ?? new();
+                        config.SolverType = opt.Def.GetType().FullName!;
+                        config.SolverFlavour = opt.Flavour;
+                        foreach (var c in crafts)
+                        {
+                            if (autoSwitchOk(c.Recipe.RowId))
+                            {
+                                Svc.Log.Information($"Switching {c.Recipe.RowId} ({c.Recipe.ItemResult.Value.Name}) to Raphael solver");
+                                var switchConfig = P.Config.RecipeConfigs.GetValueOrDefault(c.Recipe.RowId) ?? new();
+                                switchConfig.SolverType = opt.Def.GetType().FullName!;
+                                switchConfig.SolverFlavour = opt.Flavour;
+                                P.Config.RecipeConfigs[c.Recipe.RowId] = switchConfig;
+                            }
+                            else
+                                Svc.Log.Information($"Skipping {c.Recipe.RowId} ({c.Recipe.ItemResult.Value.Name}) because it already has a macro assigned");
+                        }
+                    }
+                }
+            }
+        }
+>>>>>>> Stashed changes
 
         public static string GetKey(CraftState craft)
         {
@@ -230,7 +304,7 @@ namespace Artisan.CraftingLogic.Solvers
             foreach (var recipe in recipes)
             {
                 var state = Crafting.BuildCraftStateForRecipe(default, (Job)((uint)Job.CRP + recipe.CraftType.RowId), recipe);
-                if (state.StatLevel <= 7) continue;
+                if (state.StatLevel < 7) continue;
 
                 if (stats.Prog == state.CraftProgress &&
                     stats.Qual == state.CraftQualityMax &&
@@ -329,7 +403,7 @@ namespace Artisan.CraftingLogic.Solvers
                 if (inProgress)
                     ImGui.EndDisabled();
 
-                if (craft.StatLevel > 7)
+                if (craft.StatLevel >= 7)
                 {
                     if (!inProgress)
                     {

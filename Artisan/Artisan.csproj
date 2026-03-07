@@ -3,7 +3,11 @@
   <PropertyGroup>
     <Authors></Authors>
     <Company></Company>
+<<<<<<< Updated upstream
     <Version>4.0.4.39</Version>
+=======
+    <Version>4.0.4.48</Version>
+>>>>>>> Stashed changes
     <Description>A 'simple' crafting plugin.</Description>
     <Copyright>Taurenkey</Copyright>
   </PropertyGroup>

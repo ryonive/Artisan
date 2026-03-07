@@ -91,13 +91,18 @@ public static class CraftingProcessor
         if (s != null)
             return s.Value;
 
-        var s2 = GetAvailableSolversForRecipe(craft, false);
+        var s2 = GetAvailableSolversForRecipe(craft, false).Where(x => x.Def != default);
         if (s2.Count() > 0)
+<<<<<<< Updated upstream
             return s2.MaxBy(x => x.Priority);
+=======
+            return s2.MinBy(x => x.Priority);
+>>>>>>> Stashed changes
 
         return default;
     }
 
+<<<<<<< Updated upstream
     public static IEnumerable<ISolverDefinition.Desc> GetSolverDefinitions()
     {
         foreach (var solver in SolverDefinitions)
@@ -107,6 +112,15 @@ public static class CraftingProcessor
                 yield return f;
             }
         }
+=======
+    public static ExpertProfile GetExpertProfileForRecipe(RecipeConfig? recipeConfig)
+    {
+        var profileID = recipeConfig?.ExpertProfileID ?? 0;
+        foreach (var c in P.Config.ExpertSolverProfiles.GetExpertProfilesWithDefault().Where(c => c.ID == profileID))
+            return c;
+
+        return P.Config.ExpertSolverProfiles.GetDefaultProfile();
+>>>>>>> Stashed changes
     }
 
     private static void OnCraftStarted(Lumina.Excel.Sheets.Recipe recipe, CraftState craft, StepState initialStep, bool trial)

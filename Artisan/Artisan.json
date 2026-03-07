@@ -12,5 +12,9 @@
   "RepoUrl": "https://github.com/PunishXIV/Artisan",
   "DalamudApiLevel": 14,
   "DownloadLinkTesting": "https://love.puni.sh/plugins/Artisan/Testing/latest.zip",
+<<<<<<< Updated upstream
   "ChangeLog": "- Hide Material Miracle options on non-standard/expert solvers.\n- Tweak Craft Menu window slightly to fit better."
+=======
+  "ChangeLog": "- Setting for making Raphael default solver added.\n- Re-ordered solver menu to put plugin default solvers above macros\n- IPC for starting lists added by @Aspher0."
+>>>>>>> Stashed changes
 }

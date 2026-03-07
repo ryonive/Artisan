@@ -31,6 +31,7 @@ public class RecipeConfig
     public string CurrentSolverType => TempSolverType != "" ? TempSolverType : SolverType;
     public int CurrentSolverFlavour => TempSolverFlavour != -1 ? TempSolverFlavour : SolverFlavour;
 
+<<<<<<< Updated upstream
     public string CurrentSolverName
     {
         get
@@ -43,6 +44,29 @@ public class RecipeConfig
             return "";
         }
     }
+=======
+    [NonSerialized]
+    public uint TempRequiredFood = 0;
+    [NonSerialized]
+    public bool TempFoodHQ = true;
+    [NonSerialized]
+    public uint TempRequiredPotion = 0;
+    [NonSerialized]
+    public bool TempPotionHQ = true;
+    [NonSerialized]
+    public uint TempRequiredManual = 0;
+    [NonSerialized]
+    public uint TempRequiredSquadronManual = 0;
+
+    [NonSerialized]
+    public int? TempExpertProfileID = null;
+    [NonSerialized]
+    public uint? TempExpertMaxSteadyUses = null;
+    [NonSerialized]
+    public bool? TempExpertUseMaterialMiracle = null;
+    [NonSerialized]
+    public uint? TempExpertMinimumStepsBeforeMiracle = null;
+>>>>>>> Stashed changes
 
     public string SolverType = ""; // TODO: ideally it should be a Type?, but that causes problems for serialization
     public int SolverFlavour;
@@ -73,7 +97,27 @@ public class RecipeConfig
     public string ManualName => requiredManual == Default ? $"{P.Config.DefaultConsumables.ManualName} (Default)" : RequiredManual == Disabled ? "Disabled" : $"{ConsumableChecker.Manuals.FirstOrDefault(x => x.Id == RequiredManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
     public string SquadronManualName => requiredSquadronManual == Default ? $"{P.Config.DefaultConsumables.SquadronManualName} (Default)" : RequiredSquadronManual == Disabled ? "Disabled" : $"{ConsumableChecker.SquadronManuals.FirstOrDefault(x => x.Id == RequiredSquadronManual).Name} (Qty: {ConsumableChecker.NumberOfConsumable(RequiredManual, false)})";
 
+<<<<<<< Updated upstream
     public float LargestName => (Math.Max(Math.Max(Math.Max(Math.Max(ImGui.CalcTextSize(FoodName).X, ImGui.CalcTextSize(PotionName).X), ImGui.CalcTextSize(ManualName).X), ImGui.CalcTextSize(SquadronManualName).X), ImGui.CalcTextSize(CurrentSolverName).X) + 32f);
+=======
+    public int ExpertProfileID => TempExpertProfileID ?? expertProfileID;
+    public uint ExpertMaxSteadyUses => TempExpertMaxSteadyUses ?? expertMaxSteadyUses;
+    public bool ExpertUseMaterialMiracle => TempExpertUseMaterialMiracle ?? expertUseMaterialMiracle;
+    public uint ExpertMinimumStepsBeforeMiracle => TempExpertMinimumStepsBeforeMiracle ?? expertMinimumStepsBeforeMiracle;
+
+    public float GetLargestName()
+    {
+        try
+        {
+            return Math.Max(Math.Max(Math.Max(ImGui.CalcTextSize(FoodName).X, ImGui.CalcTextSize(PotionName).X), ImGui.CalcTextSize(ManualName).X), ImGui.CalcTextSize(SquadronManualName).X) + 32f;
+        }
+        catch (Exception ex)
+        {
+            ex.Log();
+            return 0;
+        }
+    }
+>>>>>>> Stashed changes
 
     public bool SolverIsRaph => CurrentSolverType == typeof(RaphaelSolverDefintion).FullName!;
     public bool SolverIsStandard => CurrentSolverType == typeof(StandardSolverDefinition).FullName!;
@@ -81,6 +125,7 @@ public class RecipeConfig
 
     public bool Draw(uint recipeId)
     {
+<<<<<<< Updated upstream
         var recipe = LuminaSheets.RecipeSheet[recipeId];
         ImGuiEx.LineCentered($"###RecipeName{recipeId}", () => { ImGuiEx.TextUnderlined($"{recipe.ItemResult.Value.Name.ToDalamudString().ToString()}"); });
         var config = this;
@@ -97,6 +142,36 @@ public class RecipeConfig
         changed |= DrawSolver(craft, liveStats: Player.ClassJob.RowId == craft.Recipe.CraftType.RowId + 8);
         DrawSimulator(craft);
         return changed;
+=======
+        try
+        {
+            var recipe = LuminaSheets.RecipeSheet[recipeId];
+            ImGuiEx.LineCentered($"###RecipeName{recipeId}", () => { ImGuiEx.TextUnderlined($"{recipe.ItemResult.Value.Name.ToDalamudString().ToString()}"); });
+            var config = this;
+            var stats = CharacterStats.GetBaseStatsForClassHeuristic((Job)((uint)Job.CRP + recipe.CraftType.RowId));
+            stats.AddConsumables(new(config.RequiredFood, config.RequiredFoodHQ), new(config.RequiredPotion, config.RequiredPotionHQ), CharacterInfo.FCCraftsmanshipbuff);
+            var craft = Crafting.BuildCraftStateForRecipe(stats, (Job)((uint)Job.CRP + recipe.CraftType.RowId), recipe);
+            if (craft.InitialQuality == 0)
+                craft.InitialQuality = Simulator.GetStartingQuality(recipe, false, craft.StatLevel);
+            var liveStats = Player.ClassJob.RowId == craft.Recipe.CraftType.RowId + 8;
+            bool changed = false;
+            changed |= DrawFood();
+            changed |= DrawPotion();
+            changed |= DrawManual();
+            changed |= DrawSquadronManual();
+            changed |= DrawSolver(craft, liveStats: liveStats);
+            changed |= DrawExpertProfiles(craft);
+            DrawWarnings(craft);
+            RaphaelCache.DrawRaphaelDropdown(craft, liveStats);
+            DrawSimulator(craft);
+            return changed;
+        }
+        catch(Exception ex)
+        {
+            ex.Log();
+            return false;
+        }
+>>>>>>> Stashed changes
     }
 
     public bool DrawFood(bool hasButton = false)
@@ -267,6 +342,7 @@ public class RecipeConfig
 
     public bool DrawSolver(CraftState craft, bool hasButton = false, bool liveStats = true)
     {
+<<<<<<< Updated upstream
         bool changed = false;
         var solver = CraftingProcessor.GetSolverForRecipe(this, craft);
         if (string.IsNullOrEmpty(solver.Name))
@@ -280,28 +356,120 @@ public class RecipeConfig
         if (ImGui.BeginCombo("##solver", solver.Name))
         {
             foreach (var opt in CraftingProcessor.GetAvailableSolversForRecipe(craft, true).OrderByDescending(x => x.Priority))
+=======
+        try
+        {
+            bool changed = false;
+            var solver = CraftingProcessor.GetSolverForRecipe(this, craft);
+            bool exists = P.Config.RecipeConfigs.ContainsKey(craft.RecipeId);
+            if (!exists && P.Config.RaphaelSolverConfig.DefaultRaphSolver)
+>>>>>>> Stashed changes
             {
-                if (opt == default) continue;
-                if (opt.UnsupportedReason.Length > 0)
+                this.SolverFlavour = 3;
+                this.SolverType = typeof(RaphaelSolverDefintion).FullName!;
+                changed = true;
+            }
+            if (string.IsNullOrEmpty(solver.Name))
+            {
+                ImGuiEx.Text(ImGuiColors.DalamudRed, "Unable to select default solver. Please select from dropdown.");
+            }
+            ImGuiEx.TextV($"Solver:");
+            ImGui.SameLine(130f.Scale());
+            if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
+
+            if (ImGui.BeginCombo("##solver", solver.Name))
+            {
+                foreach (var opt in CraftingProcessor.GetAvailableSolversForRecipe(craft, true).OrderBy(x => x.Priority))
                 {
-                    ImGui.Text($"{opt.Name} is unsupported - {opt.UnsupportedReason}");
-                }
-                else
-                {
-                    bool selected = opt.Name == solver.Name;
-                    if (ImGui.Selectable(opt.Name, selected))
+                    if (opt == default) continue;
+                    if (opt.UnsupportedReason.Length > 0)
                     {
-                        IPC.IPC.SetTempSolverBackToNormal(craft.RecipeId);
-                        SolverType = opt.Def.GetType().FullName!;
-                        SolverFlavour = opt.Flavour;
-                        changed = true;
+                        ImGui.Text($"{opt.Name} is unsupported - {opt.UnsupportedReason}");
+                    }
+                    else
+                    {
+                        bool selected = opt.Name == solver.Name;
+                        if (ImGui.Selectable(opt.Name, selected))
+                        {
+                            IPC.IPC.SetTempSolverBackToNormal(craft.RecipeId);
+                            SolverType = opt.Def.GetType().FullName!;
+                            SolverFlavour = opt.Flavour;
+                            changed = true;
+                        }
                     }
                 }
+
+                ImGui.EndCombo();
             }
 
-            ImGui.EndCombo();
+            return changed;
         }
+        catch(Exception ex)
+        {
+            ex.Log();
+            return false;
+        }
+<<<<<<< Updated upstream
 
+=======
+    }
+
+    public bool DrawExpertProfiles(CraftState craft, bool hasButton = false)
+    {
+        try
+        {
+
+            bool changed = false;
+            if (this.CurrentSolverType.Contains("Expert") || this.CurrentSolverType == "" && craft.CraftExpert)
+            {
+                var expertProfile = CraftingProcessor.GetExpertProfileForRecipe(this);
+                if (string.IsNullOrEmpty(expertProfile.Name))
+                {
+                    ImGuiEx.Text(ImGuiColors.DalamudRed, "Unable to select an expert solver profile. Please select from dropdown.");
+                }
+
+                ImGuiEx.TextV($"Expert Profile:");
+                ImGui.SameLine();
+
+                ImGuiEx.IconWithTooltip(new Vector4(0.5f, 0.5f, 0.5f, 1f), FontAwesomeIcon.PencilAlt, "Add or edit expert solver profiles");
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                }
+                if (ImGui.IsItemClicked())
+                {
+                    P.PluginUi.OpenWindow = UI.OpenWindow.ExpertProfiles;
+                    P.PluginUi.IsOpen = true;
+                }
+                ImGui.SameLine(130f.Scale());
+
+                if (hasButton) ImGuiEx.SetNextItemFullWidth(-120);
+                if (ImGui.BeginCombo("##expertProfile", expertProfile.Name))
+                {
+                    foreach (var c in P.Config.ExpertSolverProfiles.GetExpertProfilesWithDefault())
+                    {
+                        bool selected = c.Name == expertProfile.Name;
+                        if (ImGui.Selectable(c.Name, selected))
+                        {
+                            expertProfileID = c.ID;
+                            changed = true;
+                        }
+                    }
+                    ImGui.EndCombo();
+                }
+            }
+            return changed;
+        }
+        catch(Exception ex)
+        {
+            ex.Log();
+            return false;
+        }
+    }
+
+    public void DrawWarnings(CraftState craft)
+    {
+>>>>>>> Stashed changes
         if (!Crafting.EnoughDelinsForCraft(this, craft, out var req))
         {
             ImGuiEx.TextCentered(ImGuiColors.DalamudRed, $"You do not have enough {Svc.Data.GetExcelSheet<Item>().GetRow(28724).Name} for this solver ({req} required).");
