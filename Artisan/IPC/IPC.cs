@@ -3,14 +3,13 @@ using Artisan.CraftingLists;
 using Artisan.CraftingLogic;
 using Artisan.GameInterop;
 using Artisan.RawInformation;
-using Dalamud.Game.ClientState.Conditions;
 using ECommons;
 using ECommons.DalamudServices;
 using ECommons.ExcelServices;
 using ECommons.Logging;
-using OtterGui;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Artisan.IPC
 {
@@ -54,6 +53,33 @@ namespace Artisan.IPC
 
             Svc.PluginInterface.GetIpcProvider<uint, string, bool, object>("Artisan.ChangeSolver").RegisterAction(ChangeSolver);
             Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempSolverBackToNormal").RegisterAction(SetTempSolverBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, bool, object>("Artisan.ChangeFood").RegisterAction(ChangeFood);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempFoodBackToNormal").RegisterAction(SetTempFoodBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, bool, object>("Artisan.ChangePotion").RegisterAction(ChangePotion);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempPotionBackToNormal").RegisterAction(SetTempPotionBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeManual").RegisterAction(ChangeManual);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempManualBackToNormal").RegisterAction(SetTempManualBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeSquadronManual").RegisterAction(ChangeSquadronManual);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempSquadronManualBackToNormal").RegisterAction(SetTempSquadronManualBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<Dictionary<int, string>>("Artisan.GetLists").RegisterFunc(GetLists);
+            Svc.PluginInterface.GetIpcProvider<int, object>("Artisan.StartListById").RegisterAction(StartListById);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertProfileID").RegisterAction(ChangeExpertProfileID);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertProfileIDBackToNormal").RegisterAction(SetTempExpertProfileIDBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertMaxSteadyUses").RegisterAction(ChangeExpertMaxSteadyUses);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertMaxSteadyUsesBackToNormal").RegisterAction(SetTempExpertMaxSteadyUsesBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, bool, bool, object>("Artisan.ChangeExpertUseMaterialMiracle").RegisterAction(ChangeExpertUseMaterialMiracle);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertUseMaterialMiracleBackToNormal").RegisterAction(SetTempExpertUseMaterialMiracleBackToNormal);
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertMinimumStepsBeforeMiracle").RegisterAction(ChangeExpertMinimumStepsBeforeMiracle);
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertMinimumStepsBeforeMiracleBackToNormal").RegisterAction(SetTempExpertMinimumStepsBeforeMiracleBackToNormal);
         }
 
         internal static void Dispose()
@@ -73,6 +99,33 @@ namespace Artisan.IPC
 
             Svc.PluginInterface.GetIpcProvider<uint, string, bool, object>("Artisan.ChangeSolver").UnregisterAction();
             Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempSolverBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, bool, object>("Artisan.ChangeFood").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint>("Artisan.SetTempFoodBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, bool, object>("Artisan.ChangePotion").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempPotionBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeManual").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempManualBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeSquadronManual").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempSquadronManualBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<Dictionary<int, string>>("Artisan.GetLists").UnregisterFunc();
+            Svc.PluginInterface.GetIpcProvider<int, object>("Artisan.StartListById").UnregisterAction();
+          
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertProfileID").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertProfileIDBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertMaxSteadyUses").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertMaxSteadyUsesBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertUseMaterialMiracle").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertUseMaterialMiracleBackToNormal").UnregisterAction();
+
+            Svc.PluginInterface.GetIpcProvider<uint, uint, bool, object>("Artisan.ChangeExpertMinimumStepsBeforeMiracle").UnregisterAction();
+            Svc.PluginInterface.GetIpcProvider<uint, object>("Artisan.SetTempExpertMinimumStepsBeforeMiracleBackToNormal").UnregisterAction();
         }
 
         static bool GetEnduranceStatus()
@@ -183,6 +236,170 @@ namespace Artisan.IPC
 
         }
 
+        /// <summary>
+        /// Changes the food for a given recipe.
+        /// </summary>
+        /// <param name="recipeId">The RecipeId</param>
+        /// <param name="FoodId">The Food ID of the item</param>
+        /// <param name="HighQuality">High Quality Requirement</param>
+        /// <param name="temporary">If you only want the change to work until the plugin is reloaded.</param>
+        public static void ChangeFood(uint recipeId, uint FoodId, bool HighQuality, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (temporary)
+            {
+                config.TempRequiredFood = FoodId;
+                config.TempFoodHQ = HighQuality;
+                P.Config.RecipeConfigs[recipeId] = config;
+            }
+            else
+            {
+                config.requiredFood = FoodId;
+                config.requiredFoodHQ = HighQuality;
+                P.Config.RecipeConfigs[recipeId] = config;
+                P.Config.Save();
+            }
+
+            var newConfig = P.Config.RecipeConfigs[recipeId];
+            PluginLog.Debug($"Temp FoodId {newConfig.TempRequiredFood}\n" +
+                            $"Temp HQ: {newConfig.TempFoodHQ}\n" +
+                            $"FoodId: {newConfig.requiredFood}\n" +
+                            $"Food HQ: {newConfig.requiredFoodHQ}\n" +
+                            $"Actual Values:" +
+                            $"Food Enabled: {newConfig.FoodEnabled}\n" +
+                            $"Food ID: {newConfig.FoodName}\n" +
+                            $"Food HQ: {newConfig.RequiredFoodHQ}");
+        }
+
+        /// <summary>
+        /// Changes the Potion for a given recipe.
+        /// </summary>
+        /// <param name="recipeId">The RecipeId</param>
+        /// <param name="PotionId">The Potion ID of the item</param>
+        /// <param name="HighQuality">High Quality Requirement</param>
+        /// <param name="temporary">If you only want the change to work until the plugin is reloaded.</param>
+        public static void ChangePotion(uint recipeId, uint PotionId, bool HighQuality, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (temporary)
+            {
+                config.TempRequiredPotion = PotionId;
+                config.TempPotionHQ = HighQuality;
+                P.Config.RecipeConfigs[recipeId] = config;
+            }
+            else
+            {
+                config.requiredPotion = PotionId;
+                config.requiredPotionHQ = HighQuality;
+                P.Config.RecipeConfigs[recipeId] = config;
+                P.Config.Save();
+            }
+        }
+
+        /// <summary>
+        /// Changes the Manual for a given recipe.
+        /// </summary>
+        /// <param name="recipeId">The RecipeId</param>
+        /// <param name="ManualId">The Manual ID of the item</param>
+        /// <param name="temporary">If you only want the change to work until the plugin is reloaded.</param>
+        public static void ChangeManual(uint recipeId, uint ManualId, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (temporary)
+            {
+                config.TempRequiredManual = ManualId;
+                P.Config.RecipeConfigs[recipeId] = config;
+            }
+            else
+            {
+                config.requiredManual = ManualId;
+                P.Config.RecipeConfigs[recipeId] = config;
+                P.Config.Save();
+            }
+        }
+
+        /// <summary>
+        /// Change the Squadron Manual for a given recipe
+        /// </summary>
+        /// <param name="recipeId"></param>
+        /// <param name="SquadronManualId"></param>
+        /// <param name="temporary"></param>
+        public static void ChangeSquadronManual(uint recipeId, uint SquadronManualId, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (temporary)
+            {
+                config.TempRequiredSquadronManual = SquadronManualId;
+                P.Config.RecipeConfigs[recipeId] = config;
+            }
+            else
+            {
+                config.TempRequiredSquadronManual = SquadronManualId;
+                P.Config.RecipeConfigs[recipeId] = config;
+                P.Config.Save();
+            }
+        }
+
+        /// <summary>
+        /// Change the expert solver profile ID for a given recipe
+        /// </summary>
+        /// <param name="recipeId">The ID of the recipe to be changed</param>
+        /// <param name="expertProfileId">The expert solver profile ID (or 0 to use global)</param>
+        /// <param name="temporary">Whether to save this change to the config file</param>
+        public static void ChangeExpertProfileID(uint recipeId, uint expertProfileId, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            config.TempExpertProfileID = (int)expertProfileId;
+            P.Config.RecipeConfigs[recipeId] = config;
+            if (!temporary)
+                P.Config.Save();
+        }
+
+        /// <summary>
+        /// Change the expert solver's maximum Stellar Steady Hand uses for a given recipe
+        /// </summary>
+        /// <param name="recipeId">The ID of the recipe to be changed</param>
+        /// <param name="maxSteadyUses">Number of Steady Hand uses (0 to disable)</param>
+        /// <param name="temporary">Whether to save this change to the config file</param>
+        public static void ChangeExpertMaxSteadyUses(uint recipeId, uint maxSteadyUses, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            config.TempExpertMaxSteadyUses = maxSteadyUses;
+            P.Config.RecipeConfigs[recipeId] = config;
+            if (!temporary)
+                P.Config.Save();
+        }
+
+        /// <summary>
+        /// Change whether the expert solver should use Material Miracle on a given recipe
+        /// </summary>
+        /// <param name="recipeId">The ID of the recipe to be changed</param>
+        /// <param name="useMiracle">Whether to use Material Miracle</param>
+        /// <param name="temporary">Whether to save this change to the config file</param>
+        public static void ChangeExpertUseMaterialMiracle(uint recipeId, bool useMiracle, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            config.TempExpertUseMaterialMiracle = useMiracle;
+            P.Config.RecipeConfigs[recipeId] = config;
+            if (!temporary)
+                P.Config.Save();
+        }
+
+        /// <summary>
+        /// Change how many steps the expert solver should wait before using Material Miracle on a given recipe
+        /// </summary>
+        /// <param name="recipeId">The ID of the recipe to be changed</param>
+        /// <param name="minMiracleSteps">How many steps the expert solver should wait before using Material Miracle</param>
+        /// <param name="temporary">Whether to save this change to the config file</param>
+        public static void ChangeExpertMinimumStepsBeforeMiracle(uint recipeId, uint minMiracleSteps, bool temporary)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            config.TempExpertMinimumStepsBeforeMiracle = minMiracleSteps;
+            P.Config.RecipeConfigs[recipeId] = config;
+            if (!temporary)
+                P.Config.Save();
+        }
+
         public static void SetTempSolverBackToNormal(uint recipeId)
         {
             var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
@@ -192,6 +409,94 @@ namespace Artisan.IPC
                 config.TempSolverType = "";
             }
         }
+
+        public static void SetTempFoodBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempRequiredFood != 0)
+            {
+                config.TempRequiredFood = 0;
+                config.TempFoodHQ = true;
+            }
+        }
+
+        public static void SetTempPotionBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempRequiredPotion != 0)
+            {
+                config.TempRequiredPotion = 0;
+                config.TempPotionHQ = true;
+            }
+        }
+
+        public static void SetTempManualBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempRequiredManual != 0)
+            {
+                config.TempRequiredManual = 0;
+            }
+        }
+
+        public static void SetTempSquadronManualBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempRequiredSquadronManual != 0)
+            {
+                config.TempRequiredSquadronManual = 0;
+            }
+        }
+
+        /// <summary>
+        /// Returns a dictionary mapping each crafting list ID to its name.
+        /// </summary>
+        public static Dictionary<int, string> GetLists()
+        {
+            return P.Config.NewCraftingLists.ToDictionary(x => x.ID, x => x.Name ?? string.Empty);
+        }
+
+        public static void StartListById(int listId)
+        {
+            var list = P.Config.NewCraftingLists.FirstOrDefault(x => x.ID == listId);
+            if (list == null)
+                throw new Exception($"Crafting list with ID {listId} not found.");
+
+            if (P.ws.Windows.TryGetFirst(x => x.WindowName.Contains(listId.ToString(), StringComparison.CurrentCultureIgnoreCase), out var window))
+                window.IsOpen = false;
+
+            CraftingListUI.selectedList = list;
+            CraftingListUI.StartList();
+        }
+      
+        public static void SetTempExpertProfileIDBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempExpertProfileID != null)
+                config.TempExpertProfileID = null;
+        }
+
+        public static void SetTempExpertMaxSteadyUsesBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempExpertMaxSteadyUses != null)
+                config.TempExpertMaxSteadyUses = null;
+        }
+
+        public static void SetTempExpertUseMaterialMiracleBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempExpertUseMaterialMiracle != null)
+                config.TempExpertUseMaterialMiracle = null;
+        }
+
+        public static void SetTempExpertMinimumStepsBeforeMiracleBackToNormal(uint recipeId)
+        {
+            var config = P.Config.RecipeConfigs.GetValueOrDefault(recipeId) ?? new();
+            if (config.TempExpertMinimumStepsBeforeMiracle != null)
+                config.TempExpertMinimumStepsBeforeMiracle = null;
+        }
+
         public enum ArtisanMode
         {
             None = 0,
